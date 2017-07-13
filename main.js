@@ -11,7 +11,7 @@ let startOnLogin = false
 
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
-const server = 'www.google.com'
+let server = 'www.google.com'
 const maxPingsToKeep = 20
 
 const goodLatencyThreshold = 100
@@ -41,6 +41,15 @@ function buildMenu () {
       clipboard.writeText(clipboardString)
     }},
     {label: 'Ping History', submenu: pingHistory},
+    {type: 'separator'},
+
+    {label: 'Switch to Server on Clipboard', click: function () {
+      server = clipboard.readText()
+      pingHistory = []
+      averageLatency = 'No Returned Pings'
+      tray.setImage(questionableLatencyIcon)
+      buildMenu()
+    }},
     {type: 'separator'},
 
     {label: appEnabled ? 'Pause' : 'Unpause', click: function () {
