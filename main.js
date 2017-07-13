@@ -7,6 +7,7 @@ let pingHistory = []
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
 const server = 'www.google.com'
+const maxPingsToKeep = 20
 
 app.on('ready', () => {
   tray = new Tray('menuBarIcon@2x.png')
@@ -16,7 +17,9 @@ app.on('ready', () => {
   setInterval(function () {
     ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
+      if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
       averageLatency = getAverageLatency(pingHistory)
+      console.log(pingHistory.length)
       buildMenu()
     })
   }, pingInterval)
