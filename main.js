@@ -1,23 +1,32 @@
 const {app, Menu, Tray} = require('electron')
+let ping  = require('ping')
 
 let tray = null
 let contextMenu
-let pingHistory = [{label: 'blah'}]
+let pingHistory = []
+let averageLatency = 'No Returned Pings'
+const pingInterval = 5000
+const server = 'www.google.com'
 
 app.on('ready', () => {
   tray = new Tray('menuBarIcon@2x.png')
   tray.setToolTip('am-i-connected')
   buildMenu()
 
-
+  setInterval(function () {
+    ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
+      pingHistory.push({label: pingResponse.time.toFixed().toString()})
+      averageLatency = getAverageLatency(pingHistory)
+      buildMenu()
+    })
+  }, pingInterval)
 })
 
 function buildMenu () {
   contextMenu = Menu.buildFromTemplate([
-    {label: 'Average Latency'},
+    {label: 'Average Latency: ' + averageLatency},
     {label: 'Copy Ping History', click: function () {
-      // pingHistory.push({label: 'hi'})
-      // buildMenu()
+
     }},
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
@@ -33,4 +42,17 @@ function buildMenu () {
     {label: 'Quit', role: 'quit'}
   ])
   tray.setContextMenu(contextMenu)
+}
+
+// Average latency of returned pings
+function getAverageLatency (pingHistory) {
+  let pingSum = 0
+  let numReturnedPings = 0
+  for (let i = 0; i < pingHistory.length; i++) {
+    if (typeof parseInt(pingHistory[i].label) === 'number') {
+      pingSum += parseInt(pingHistory[i].label)
+      numReturnedPings++
+    }
+  }
+  return numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
 }
