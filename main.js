@@ -3,6 +3,7 @@ let ping  = require('ping')
 
 let tray = null
 let contextMenu = null
+let intervalID = null
 
 let pingHistory = []
 let appEnabled = true
@@ -27,25 +28,7 @@ app.on('ready', () => {
   tray.setToolTip('am-i-connected')
   buildMenu()
 
-  setInterval(function () {
-    if (appEnabled) {
-      ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
-        pingHistory.push({label: pingResponse.time.toFixed().toString()})
-        if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
-
-        averageLatency = getAverageLatency(pingHistory)
-        if (parseInt(averageLatency) < goodLatencyThreshold) {
-          tray.setImage(goodLatencyIcon)
-        } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
-          tray.setImage(questionableLatencyIcon)
-        } else {
-          tray.setImage(badLatencyIcon)
-        }
-
-        buildMenu()
-      })
-    }
-  }, pingInterval)
+  startPinging()
 })
 
 function buildMenu () {
@@ -61,7 +44,13 @@ function buildMenu () {
     {type: 'separator'},
 
     {label: appEnabled ? 'Pause' : 'Unpause', click: function () {
-      appEnabled = appEnabled ? false : true
+      if (appEnabled) {
+        appEnabled = false
+        clearInterval(intervalID)
+      } else {
+        appEnabled = true
+        startPinging()
+      }
       buildMenu()
     }},
     {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
@@ -86,4 +75,25 @@ function getAverageLatency (pingHistory) {
     }
   }
   return numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
+}
+
+function startPinging () {
+  intervalID = setInterval(function () {
+    ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
+      pingHistory.push({label: pingResponse.time.toFixed().toString()})
+      if (pingHistory.length > maxPingsToKeep)
+        pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
+
+      averageLatency = getAverageLatency(pingHistory)
+      if (parseInt(averageLatency) < goodLatencyThreshold) {
+        tray.setImage(goodLatencyIcon)
+      } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
+        tray.setImage(questionableLatencyIcon)
+      } else {
+        tray.setImage(badLatencyIcon)
+      }
+
+      buildMenu()
+    })
+  }, pingInterval)
 }
