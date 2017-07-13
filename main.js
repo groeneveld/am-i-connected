@@ -1,4 +1,4 @@
-const {app, Menu, Tray} = require('electron')
+const {app, Menu, Tray, clipboard} = require('electron')
 let ping  = require('ping')
 
 let tray = null
@@ -52,7 +52,10 @@ function buildMenu () {
   contextMenu = Menu.buildFromTemplate([
     {label: 'Average Latency: ' + averageLatency},
     {label: 'Copy Ping History', click: function () {
-
+      clipboardString = ''
+      for (let i = 0; i < pingHistory.length; i++)
+        clipboardString += pingHistory[i].label + '\n'
+      clipboard.writeText(clipboardString)
     }},
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
