@@ -20,27 +20,31 @@ const goodLatencyIcon = 'glyphicons-194-ok-sign@2x.png'
 const questionableLatencyIcon = 'glyphicons-195-question-sign@2x.png'
 const badLatencyIcon = 'glyphicons-193-remove-sign@2x.png'
 
+app.dock.hide()
+
 app.on('ready', () => {
   tray = new Tray(questionableLatencyIcon)
   tray.setToolTip('am-i-connected')
   buildMenu()
 
   setInterval(function () {
-    ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
-      pingHistory.push({label: pingResponse.time.toFixed().toString()})
-      if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
+    if (appEnabled) {
+      ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
+        pingHistory.push({label: pingResponse.time.toFixed().toString()})
+        if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
 
-      averageLatency = getAverageLatency(pingHistory)
-      if (parseInt(averageLatency) < goodLatencyThreshold) {
-        tray.setImage(goodLatencyIcon)
-      } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
-        tray.setImage(questionableLatencyIcon)
-      } else {
-        tray.setImage(badLatencyIcon)
-      }
+        averageLatency = getAverageLatency(pingHistory)
+        if (parseInt(averageLatency) < goodLatencyThreshold) {
+          tray.setImage(goodLatencyIcon)
+        } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
+          tray.setImage(questionableLatencyIcon)
+        } else {
+          tray.setImage(badLatencyIcon)
+        }
 
-      buildMenu()
-    })
+        buildMenu()
+      })
+    }
   }, pingInterval)
 })
 
@@ -53,7 +57,7 @@ function buildMenu () {
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
 
-    {label: (appEnabled ? 'Disable' : 'Enable') + 'App', click: function () {
+    {label: appEnabled ? 'Pause' : 'Unpause', click: function () {
       appEnabled = appEnabled ? false : true
       buildMenu()
     }},
