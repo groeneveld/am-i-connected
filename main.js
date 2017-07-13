@@ -3,7 +3,10 @@ let ping  = require('ping')
 
 let tray = null
 let contextMenu = null
+
 let pingHistory = []
+let appEnabled = true
+let startOnLogin = false
 
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
@@ -26,6 +29,7 @@ app.on('ready', () => {
     ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
       if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
+
       averageLatency = getAverageLatency(pingHistory)
       if (parseInt(averageLatency) < goodLatencyThreshold) {
         tray.setImage(goodLatencyIcon)
@@ -34,6 +38,7 @@ app.on('ready', () => {
       } else {
         tray.setImage(badLatencyIcon)
       }
+
       buildMenu()
     })
   }, pingInterval)
@@ -47,15 +52,17 @@ function buildMenu () {
     }},
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
-    {label: 'Settings', submenu: [
-      {label: 'Start on Login', click: function () {
 
-      }},
-      {label: 'Disable Start on Login', click: function () {
-
-      }}
-    ]},
+    {label: (appEnabled ? 'Disable' : 'Enable') + 'App', click: function () {
+      appEnabled = appEnabled ? false : true
+      buildMenu()
+    }},
+    {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
+      startOnLogin = startOnLogin ? false : true
+      buildMenu()
+    }},
     {type: 'separator'},
+
     {label: 'Quit', role: 'quit'}
   ])
   tray.setContextMenu(contextMenu)
