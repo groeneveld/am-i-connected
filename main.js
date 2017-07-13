@@ -4,13 +4,21 @@ let ping  = require('ping')
 let tray = null
 let contextMenu = null
 let pingHistory = []
+
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
 const server = 'www.google.com'
 const maxPingsToKeep = 20
 
+const goodLatencyThreshold = 100
+const questionableLatencyThreshold = 500
+
+const goodLatencyIcon = 'glyphicons-194-ok-sign@2x.png'
+const questionableLatencyIcon = 'glyphicons-195-question-sign@2x.png'
+const badLatencyIcon = 'glyphicons-193-remove-sign@2x.png'
+
 app.on('ready', () => {
-  tray = new Tray('menuBarIcon@2x.png')
+  tray = new Tray(questionableLatencyIcon)
   tray.setToolTip('am-i-connected')
   buildMenu()
 
@@ -19,6 +27,13 @@ app.on('ready', () => {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
       if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
       averageLatency = getAverageLatency(pingHistory)
+      if (parseInt(averageLatency) < goodLatencyThreshold) {
+        tray.setImage(goodLatencyIcon)
+      } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
+        tray.setImage(questionableLatencyIcon)
+      } else {
+        tray.setImage(badLatencyIcon)
+      }
       buildMenu()
     })
   }, pingInterval)
