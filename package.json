@@ -16,5 +16,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "~1.6.11"
+  },
+  "dependencies": {
+    "ping": "^0.2.2"
   }
 }

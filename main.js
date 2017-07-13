@@ -2,7 +2,7 @@ const {app, Menu, Tray} = require('electron')
 let ping  = require('ping')
 
 let tray = null
-let contextMenu
+let contextMenu = null
 let pingHistory = []
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
@@ -19,7 +19,6 @@ app.on('ready', () => {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
       if (pingHistory.length > maxPingsToKeep) pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
       averageLatency = getAverageLatency(pingHistory)
-      console.log(pingHistory.length)
       buildMenu()
     })
   }, pingInterval)
@@ -47,7 +46,7 @@ function buildMenu () {
   tray.setContextMenu(contextMenu)
 }
 
-// Average latency of returned pings
+// Excludes unreturned pings
 function getAverageLatency (pingHistory) {
   let pingSum = 0
   let numReturnedPings = 0
