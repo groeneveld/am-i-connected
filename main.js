@@ -6,7 +6,7 @@ let contextMenu = null
 let intervalID = null
 
 let pingHistory = []
-let appEnabled = true
+let pingingEnabled = true
 let startOnLogin = false
 
 let averageLatency = 'No Returned Pings'
@@ -33,16 +33,17 @@ app.on('ready', () => {
 
 function buildMenu () {
   contextMenu = Menu.buildFromTemplate([
-    {label: 'Average Latency: ' + averageLatency},
+    {label: 'Average Latency: ' + averageLatency, enabled: false},
     {label: 'Copy Ping History', click: function () {
       clipboardString = ''
-      for (let i = 0; i < pingHistory.length; i++)
-        clipboardString += pingHistory[i].label + '\n'
+      for (let ping of pingHistory)
+        clipboardString += ping.label + '\n'
       clipboard.writeText(clipboardString)
     }},
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
 
+    {label: 'Server: ' + server, enabled: false},
     {label: 'Switch to Server on Clipboard', click: function () {
       server = clipboard.readText()
       pingHistory = []
@@ -52,12 +53,12 @@ function buildMenu () {
     }},
     {type: 'separator'},
 
-    {label: appEnabled ? 'Pause' : 'Unpause', click: function () {
-      if (appEnabled) {
-        appEnabled = false
+    {label: pingingEnabled ? 'Pause' : 'Unpause', click: function () {
+      if (pingingEnabled) {
+        pingingEnabled = false
         clearInterval(intervalID)
       } else {
-        appEnabled = true
+        pingingEnabled = true
         startPinging()
       }
       buildMenu()
@@ -74,16 +75,26 @@ function buildMenu () {
 }
 
 // Excludes unreturned pings
-function getAverageLatency (pingHistory) {
+function updateAverageLatency () {
   let pingSum = 0
   let numReturnedPings = 0
-  for (let i = 0; i < pingHistory.length; i++) {
-    if (typeof parseInt(pingHistory[i].label) === 'number') {
-      pingSum += parseInt(pingHistory[i].label)
+  for (let ping of pingHistory) {
+    if (typeof parseInt(ping.label) === 'number') {
+      pingSum += parseInt(ping.label)
       numReturnedPings++
     }
   }
-  return numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
+  averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
+
+  latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
+  latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
+  if (latencyIsGood) {
+    tray.setImage(goodLatencyIcon)
+  } else if (latencyisQuestionable) {
+    tray.setImage(questionableLatencyIcon)
+  } else {
+    tray.setImage(badLatencyIcon)
+  }
 }
 
 function startPinging () {
@@ -93,14 +104,7 @@ function startPinging () {
       if (pingHistory.length > maxPingsToKeep)
         pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
 
-      averageLatency = getAverageLatency(pingHistory)
-      if (parseInt(averageLatency) < goodLatencyThreshold) {
-        tray.setImage(goodLatencyIcon)
-      } else if (parseInt(averageLatency) < questionableLatencyThreshold) {
-        tray.setImage(questionableLatencyIcon)
-      } else {
-        tray.setImage(badLatencyIcon)
-      }
+      updateAverageLatency()
 
       buildMenu()
     })
