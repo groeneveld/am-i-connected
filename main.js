@@ -1,13 +1,14 @@
 const {app, Menu, Tray, clipboard} = require('electron')
-let ping  = require('ping')
+const autostart = require('node-autostart')
+const ping  = require('ping')
 
 let tray = null
 let contextMenu = null
 let intervalID = null
+let startOnLogin = null
 
 let pingHistory = []
 let pingingEnabled = true
-let startOnLogin = false
 
 let averageLatency = 'No Returned Pings'
 const pingInterval = 5000
@@ -26,7 +27,8 @@ app.dock.hide()
 app.on('ready', () => {
   tray = new Tray(questionableLatencyIcon)
   tray.setToolTip('am-i-connected')
-  buildMenu()
+
+  getAutostartStatus()
 
   startPinging()
 })
@@ -64,6 +66,19 @@ function buildMenu () {
       buildMenu()
     }},
     {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
+      if (startOnLogin) {
+        autostart.disableAutostart('thisApp').then(() => {
+          startOnLogin = false
+        }).catch((error) => {
+          console.error(error)
+        })
+      } else {
+        autostart.enableAutostart('thisApp', 'node start', process.cwd()).then(() => {
+          startOnLogin = true
+        }).catch((error) => {
+          console.error(error)
+        })
+      }
       startOnLogin = startOnLogin ? false : true
       buildMenu()
     }},
@@ -109,4 +124,14 @@ function startPinging () {
       buildMenu()
     })
   }, pingInterval)
+}
+
+function getAutostartStatus() {
+  autostart.isAutostartEnabled('thisApp').then((isEnabled) => {
+    startOnLogin = isEnabled
+    buildMenu()
+  }).catch((error) => {
+    console.error(error)
+    buildMenu()
+  })
 }
