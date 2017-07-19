@@ -1,6 +1,12 @@
 # am-i-connected
-Multi-platform connection status checker that lives in your OS system tray. Features customizable server, start-on-login, average latency, ping history, and is pause-able.
+Multi-platform connection status checker that lives in your OS system tray.
+Features:
+* Customizable server
+* Start on login
+* Average latency
+* Ping history
+* Pause-ablity
 
 ## Installation and Usage
-npm install
-npm start
+* 'npm install'
+* 'npm start'
