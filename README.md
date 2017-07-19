@@ -8,5 +8,5 @@ Features:
 * Pause-ablity
 
 ## Installation and Usage
-* 'npm install'
-* 'npm start'
+* `npm install`
+* `npm start`
