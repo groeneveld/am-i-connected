@@ -18,9 +18,10 @@ const maxPingsToKeep = 20
 const goodLatencyThreshold = 100
 const questionableLatencyThreshold = 500
 
-const goodLatencyIcon = 'glyphicons-194-ok-sign@2x.png'
-const questionableLatencyIcon = 'glyphicons-195-question-sign@2x.png'
-const badLatencyIcon = 'glyphicons-193-remove-sign@2x.png'
+const goodLatencyIcon = 'images/running-good@2x.png'
+const questionableLatencyIcon = 'images/running-questionable@2x.png'
+const badLatencyIcon = 'images/running-bad@2x.png'
+const pausedIcon = 'images/paused@2x.png'
 
 app.dock.hide()
 
@@ -58,6 +59,7 @@ function buildMenu () {
     {label: pingingEnabled ? 'Pause' : 'Unpause', click: function () {
       if (pingingEnabled) {
         pingingEnabled = false
+        tray.setImage(pausedIcon)
         clearInterval(intervalID)
       } else {
         pingingEnabled = true
