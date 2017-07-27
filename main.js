@@ -36,59 +36,95 @@ app.on('ready', () => {
   pingEveryInterval()
 })
 
+function averageLatencyMenuItem() {
+  return {label: 'Average Latency: ' + averageLatency, enabled: false};
+}
+
+function copyPingHistoryMenuItem() {
+  return {label: 'Copy Ping History', click: function () {
+    clipboardString = ''
+    for (let ping of pingHistory)
+      clipboardString += ping.label + '\n'
+    clipboard.writeText(clipboardString)
+  }};
+}
+
+function pingHistoryMenuItem() {
+  return {label: 'Ping History', submenu: pingHistory}
+}
+
+function separator() {
+  return {type: 'separator'}
+}
+
+function displayServerMenuItem() {
+  return {label: 'Server: ' + config.server, enabled: false};
+}
+
+function switchServerMenuItem() {
+  return {label: 'Switch to Server on Clipboard', click: function () {
+    config.server = clipboard.readText()
+    pingHistory = []
+    averageLatency = 'No Returned Pings'
+    tray.setImage(questionableLatencyIcon)
+    buildMenu()
+  }}
+}
+
+function pauseMenuItem() {
+  return {label: pingingEnabled ? 'Pause' : 'Unpause', click: function () {
+    if (pingingEnabled) {
+      pingingEnabled = false
+      tray.setImage(pausedIcon)
+      clearInterval(intervalID)
+    } else {
+      pingingEnabled = true
+      pingEveryInterval()
+    }
+    buildMenu()
+  }}
+}
+
+function startOnLoginMenuItem() {
+  return {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
+    if (startOnLogin) {
+      autostart.disableAutostart('thisApp').then(() => {
+        startOnLogin = false
+      }).catch((error) => {
+        console.error(error)
+      })
+    } else {
+      autostart.enableAutostart('thisApp', 'node start', process.cwd()).then(() => {
+        startOnLogin = true
+      }).catch((error) => {
+        console.error(error)
+      })
+    }
+    startOnLogin = startOnLogin ? false : true
+    buildMenu()
+  }}
+}
+
+function quitMenuItem() {
+  return {label: 'Quit', role: 'quit'}
+}
+
 function buildMenu () {
   contextMenu = Menu.buildFromTemplate([
-    {label: 'Average Latency: ' + averageLatency, enabled: false},
-    {label: 'Copy Ping History', click: function () {
-      clipboardString = ''
-      for (let ping of pingHistory)
-        clipboardString += ping.label + '\n'
-      clipboard.writeText(clipboardString)
-    }},
-    {label: 'Ping History', submenu: pingHistory},
-    {type: 'separator'},
+    averageLatencyMenuItem(),
+    copyPingHistoryMenuItem(),
+    pingHistoryMenuItem(),
+    separator(),
 
-    {label: 'Server: ' + config.server, enabled: false},
-    {label: 'Switch to Server on Clipboard', click: function () {
-      config.server = clipboard.readText()
-      pingHistory = []
-      averageLatency = 'No Returned Pings'
-      tray.setImage(questionableLatencyIcon)
-      buildMenu()
-    }},
-    {type: 'separator'},
+    displayServerMenuItem(),
+    switchServerMenuItem(),
+    separator(),
 
-    {label: pingingEnabled ? 'Pause' : 'Unpause', click: function () {
-      if (pingingEnabled) {
-        pingingEnabled = false
-        tray.setImage(pausedIcon)
-        clearInterval(intervalID)
-      } else {
-        pingingEnabled = true
-        pingEveryInterval()
-      }
-      buildMenu()
-    }},
-    {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
-      if (startOnLogin) {
-        autostart.disableAutostart('thisApp').then(() => {
-          startOnLogin = false
-        }).catch((error) => {
-          console.error(error)
-        })
-      } else {
-        autostart.enableAutostart('thisApp', 'node start', process.cwd()).then(() => {
-          startOnLogin = true
-        }).catch((error) => {
-          console.error(error)
-        })
-      }
-      startOnLogin = startOnLogin ? false : true
-      buildMenu()
-    }},
-    {type: 'separator'},
+    pauseMenuItem(),
+    startOnLoginMenuItem(),
+    separator(),
 
-    {label: 'Quit', role: 'quit'}
+    quitMenuItem()
   ])
   tray.setContextMenu(contextMenu)
 }
