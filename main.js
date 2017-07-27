@@ -143,9 +143,7 @@ function calculateAverageLatency() {
   return averageLatency;
 }
 
-function updateAverageLatency () {
-  const averageLatency = calculateAverageLatency();
-
+function setIconBasedOnLatency(averageLatency) {
   latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
   latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
   if (latencyIsGood) {
@@ -155,6 +153,11 @@ function updateAverageLatency () {
   } else {
     tray.setImage(badLatencyIcon)
   }
+}
+
+function updateAverageLatency () {
+  const averageLatency = calculateAverageLatency();
+  setIconBasedOnLatency(averageLatency)
 }
 
 function pingEveryInterval () {
