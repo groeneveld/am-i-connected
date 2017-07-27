@@ -143,12 +143,22 @@ function calculateAverageLatency() {
   return averageLatency;
 }
 
-function setIconBasedOnLatency(averageLatency) {
+function determineStateBasedOnLatency(averageLatency) {
   latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
   latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
   if (latencyIsGood) {
-    tray.setImage(goodLatencyIcon)
+    return 'good';
   } else if (latencyisQuestionable) {
+    return 'questionable';
+  } else {
+    return 'bad';
+  }
+}
+
+function setIconBasedOnState(state) {
+  if (state === 'good') {
+    tray.setImage(goodLatencyIcon)
+  } else if (state === 'questionable') {
     tray.setImage(questionableLatencyIcon)
   } else {
     tray.setImage(badLatencyIcon)
@@ -157,7 +167,8 @@ function setIconBasedOnLatency(averageLatency) {
 
 function updateAverageLatency () {
   const averageLatency = calculateAverageLatency();
-  setIconBasedOnLatency(averageLatency)
+  const state = determineStateBasedOnLatency(averageLatency);
+  setIconBasedOnState(state);
 }
 
 function pingEveryInterval () {
