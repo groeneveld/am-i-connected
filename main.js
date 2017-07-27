@@ -122,15 +122,19 @@ function pingEveryInterval () {
 
 function doThePing() {
   ping.promise.probe(config.server, {min_reply: 1}).then(function(pingResponse) {
-    pingHistory.push({label: pingResponse.time.toFixed().toString()})
-    if (pingHistory.length > config.maxPingsToKeep)
-      pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
+    putResponseIntoHistory(pingResponse);
 
-    updateAverageLatency()
+    updateAverageLatency();
 
-    buildMenu()
+    buildMenu();
   })
-},
+}
+
+function putResponseIntoHistory(pingResponse) {
+  pingHistory.push({label: pingResponse.time.toFixed().toString()})
+  if (pingHistory.length > config.maxPingsToKeep)
+    pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
+}
 
 function getAutostartStatus() {
   autostart.isAutostartEnabled('thisApp').then((isEnabled) => {
