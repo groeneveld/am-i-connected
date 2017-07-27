@@ -11,9 +11,11 @@ let pingHistory = []
 let pingingEnabled = true
 
 let averageLatency = 'No Returned Pings'
-const pingInterval = 5000
-let server = 'www.google.com'
-const maxPingsToKeep = 20
+
+const config = {};
+config.pingInterval = 5000
+config.server = 'www.google.com'
+config.maxPingsToKeep = 20
 
 const goodLatencyThreshold = 100
 const questionableLatencyThreshold = 500
@@ -46,9 +48,9 @@ function buildMenu () {
     {label: 'Ping History', submenu: pingHistory},
     {type: 'separator'},
 
-    {label: 'Server: ' + server, enabled: false},
+    {label: 'Server: ' + config.server, enabled: false},
     {label: 'Switch to Server on Clipboard', click: function () {
-      server = clipboard.readText()
+      config.server = clipboard.readText()
       pingHistory = []
       averageLatency = 'No Returned Pings'
       tray.setImage(questionableLatencyIcon)
@@ -116,16 +118,16 @@ function updateAverageLatency () {
 
 function pingEveryInterval () {
   intervalID = setInterval(function () {
-    ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
+    ping.promise.probe(config.server, {min_reply: 1}).then(function(pingResponse) {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
-      if (pingHistory.length > maxPingsToKeep)
-        pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
+      if (pingHistory.length > config.maxPingsToKeep)
+        pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
 
       updateAverageLatency()
 
       buildMenu()
     })
-  }, pingInterval)
+  }, config.pingInterval)
 }
 
 function getAutostartStatus() {
