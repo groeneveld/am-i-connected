@@ -117,18 +117,20 @@ function updateAverageLatency () {
 }
 
 function pingEveryInterval () {
-  intervalID = setInterval(function () {
-    ping.promise.probe(config.server, {min_reply: 1}).then(function(pingResponse) {
-      pingHistory.push({label: pingResponse.time.toFixed().toString()})
-      if (pingHistory.length > config.maxPingsToKeep)
-        pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
-
-      updateAverageLatency()
-
-      buildMenu()
-    })
-  }, config.pingInterval)
+  intervalID = setInterval(doThePing, config.pingInterval)
 }
+
+function doThePing() {
+  ping.promise.probe(config.server, {min_reply: 1}).then(function(pingResponse) {
+    pingHistory.push({label: pingResponse.time.toFixed().toString()})
+    if (pingHistory.length > config.maxPingsToKeep)
+      pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
+
+    updateAverageLatency()
+
+    buildMenu()
+  })
+},
 
 function getAutostartStatus() {
   autostart.isAutostartEnabled('thisApp').then((isEnabled) => {
