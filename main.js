@@ -31,7 +31,7 @@ app.on('ready', () => {
 
   getAutostartStatus()
 
-  startPinging()
+  pingEveryInterval()
 })
 
 function buildMenu () {
@@ -63,7 +63,7 @@ function buildMenu () {
         clearInterval(intervalID)
       } else {
         pingingEnabled = true
-        startPinging()
+        pingEveryInterval()
       }
       buildMenu()
     }},
@@ -114,7 +114,7 @@ function updateAverageLatency () {
   }
 }
 
-function startPinging () {
+function pingEveryInterval () {
   intervalID = setInterval(function () {
     ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
       pingHistory.push({label: pingResponse.time.toFixed().toString()})
