@@ -164,9 +164,7 @@ function pingEveryInterval () {
 function doThePing() {
   ping.promise.probe(config.server, {min_reply: 1}).then(function(pingResponse) {
     putResponseIntoHistory(pingResponse);
-
     updateAverageLatency();
-
     buildMenu();
   })
 }
