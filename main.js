@@ -185,8 +185,9 @@ function doThePing() {
 
 function putResponseIntoHistory(pingResponse) {
   pingHistory.push({label: pingResponse.time.toFixed().toString()})
-  if (pingHistory.length > config.maxPingsToKeep)
+  if (pingHistory.length > config.maxPingsToKeep) {
     pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
+  }
 }
 
 function getAutostartStatus() {
