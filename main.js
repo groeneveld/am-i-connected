@@ -130,7 +130,7 @@ function buildMenu () {
 }
 
 // Excludes unreturned pings
-function updateAverageLatency () {
+function calculateAverageLatency() {
   let pingSum = 0
   let numReturnedPings = 0
   for (let ping of pingHistory) {
@@ -140,6 +140,11 @@ function updateAverageLatency () {
     }
   }
   averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
+  return averageLatency;
+}
+
+function updateAverageLatency () {
+  const averageLatency = calculateAverageLatency();
 
   latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
   latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
