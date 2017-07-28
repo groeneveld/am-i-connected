@@ -1,32 +1,35 @@
 const {app, Menu, Tray, clipboard} = require('electron')
 const autostart = require('node-autostart')
 const ping  = require('ping')
+const path = require('path')
 
 let tray = null
 let contextMenu = null
 let intervalID = null
-let startOnLogin = null
 
-let pingHistory = []
+let startOnLogin = false
 let pingingEnabled = true
 
-let averageLatency = 'No Returned Pings'
-const pingInterval = 5000
+let pingHistory = []
 let server = 'www.google.com'
+let averageLatency = 'No Returned Pings'
+let droppedPingPercentage = 0
+const pingInterval = 1000 //ms
 const maxPingsToKeep = 20
 
-const goodLatencyThreshold = 100
-const questionableLatencyThreshold = 500
+const goodLatencyThreshold = 100 //ms
+const questionableLatencyThreshold = 300 //ms
+const badDropRateThreshold = 11 //percent
 
-const goodLatencyIcon = 'images/running-good@2x.png'
-const questionableLatencyIcon = 'images/running-questionable@2x.png'
-const badLatencyIcon = 'images/running-bad@2x.png'
-const pausedIcon = 'images/paused@2x.png'
+const goodConnectionIcon = path.join(__dirname, 'images/running-good@2x.png')
+const questionableConnectionIcon = path.join(__dirname, 'images/running-questionable@2x.png')
+const badConnectionIcon = path.join(__dirname, 'images/running-bad@2x.png')
+const pausedIcon = path.join(__dirname, 'images/paused@2x.png')
 
 app.dock.hide()
 
 app.on('ready', () => {
-  tray = new Tray(questionableLatencyIcon)
+  tray = new Tray(questionableConnectionIcon)
   tray.setToolTip('am-i-connected')
 
   getAutostartStatus()
@@ -37,6 +40,7 @@ app.on('ready', () => {
 function buildMenu () {
   contextMenu = Menu.buildFromTemplate([
     {label: 'Average Latency: ' + averageLatency, enabled: false},
+    {label: 'Dropped Pings: ' + droppedPingPercentage + ' %', enabled: false},
     {label: 'Copy Ping History', click: function () {
       clipboardString = ''
       for (let ping of pingHistory)
@@ -51,7 +55,7 @@ function buildMenu () {
       server = clipboard.readText()
       pingHistory = []
       averageLatency = 'No Returned Pings'
-      tray.setImage(questionableLatencyIcon)
+      tray.setImage(questionableConnectionIcon)
       buildMenu()
     }},
     {type: 'separator'},
@@ -95,29 +99,37 @@ function buildMenu () {
 function updateAverageLatency () {
   let pingSum = 0
   let numReturnedPings = 0
+  let numDroppedPings = 0
   for (let ping of pingHistory) {
-    if (typeof parseInt(ping.label) === 'number') {
+    if (Number.isInteger(parseInt(ping.label))) {
       pingSum += parseInt(ping.label)
       numReturnedPings++
+    } else {
+      numDroppedPings++
     }
   }
-  averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Returned Pings'
+  averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Data'
+  droppedPingPercentage = (numDroppedPings / pingHistory.length * 100).toFixed()
 
-  latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
-  latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
-  if (latencyIsGood) {
-    tray.setImage(goodLatencyIcon)
-  } else if (latencyisQuestionable) {
-    tray.setImage(questionableLatencyIcon)
+  const averageLatencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
+  const tooManyDroppedPings = droppedPingPercentage >= badDropRateThreshold
+  const mostRecentPingDropped = pingHistory[pingHistory.length - 1].label === 'Not Returned'
+  const mostRecentLatencyIsBad = parseInt(pingHistory[pingHistory.length - 1].label) >= questionableLatencyThreshold
+  if (averageLatencyIsGood && !tooManyDroppedPings) {
+    tray.setImage(goodConnectionIcon)
+  } else if (mostRecentPingDropped || mostRecentLatencyIsBad) {
+    tray.setImage(badConnectionIcon)
   } else {
-    tray.setImage(badLatencyIcon)
+    tray.setImage(questionableConnectionIcon)
   }
 }
 
 function startPinging () {
   intervalID = setInterval(function () {
     ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
-      pingHistory.push({label: pingResponse.time.toFixed().toString()})
+
+      const pingLabel = pingResponse.alive ? pingResponse.time.toFixed().toString() : 'Not Returned'
+      pingHistory.push({label: pingLabel})
       if (pingHistory.length > maxPingsToKeep)
         pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
 

@@ -15,10 +15,21 @@
   "author": "Mark Groeneveld",
   "license": "MIT",
   "devDependencies": {
-    "electron": "~1.6.11"
+    "electron": "~1.6.11",
+    "electron-builder": "^19.6.3"
   },
   "dependencies": {
     "node-autostart": "^3.0.3",
     "ping": "^0.2.2"
+  },
+  "build": {
+    "appId": "am-i-connected",
+    "mac": {
+      "category": "tool"
+    }
+  },
+  "scripts": {
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   }
 }
