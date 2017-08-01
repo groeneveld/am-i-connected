@@ -3,6 +3,7 @@ const autostart = require('node-autostart')
 const ping  = require('ping')
 const path = require('path')
 
+let clipboardString
 let tray = null
 let contextMenu = null
 let intervalID = null
@@ -10,12 +11,13 @@ let intervalID = null
 let startOnLogin = false
 let pingingEnabled = true
 
-let pingHistory = []
-let server = 'www.google.com'
 let averageLatency = 'No Returned Pings'
 let droppedPingPercentage = 0
-const pingInterval = 1000 //ms
-const maxPingsToKeep = 20
+
+const config = {}
+config.pingInterval = 5000
+config.server = 'www.google.com'
+config.maxPingsToKeep = 20
 
 const goodLatencyThreshold = 100 //ms
 const questionableLatencyThreshold = 300 //ms
@@ -34,44 +36,72 @@ app.on('ready', () => {
 
   getAutostartStatus()
 
-  startPinging()
+  pingEveryInterval()
 })
 
-function buildMenu () {
-  contextMenu = Menu.buildFromTemplate([
-    {label: 'Average Latency: ' + averageLatency, enabled: false},
-    {label: 'Dropped Pings: ' + droppedPingPercentage + ' %', enabled: false},
-    {label: 'Copy Ping History', click: function () {
-      clipboardString = ''
-      for (let ping of pingHistory)
-        clipboardString += ping.label + '\n'
-      clipboard.writeText(clipboardString)
-    }},
-    {label: 'Ping History', submenu: pingHistory},
-    {type: 'separator'},
+function averageLatencyMenuItem () {
+  return {label: 'Average Latency: ' + averageLatency, enabled: false}
+}
 
-    {label: 'Server: ' + server, enabled: false},
-    {label: 'Switch to Server on Clipboard', click: function () {
-      server = clipboard.readText()
+function copyPingHistoryMenuItem () {
+  return {
+    label: 'Copy Ping History',
+    click: function () {
+      clipboardString = ''
+      for (let ping of pingHistory) {
+        clipboardString += ping.label + '\n'
+      }
+      clipboard.writeText(clipboardString)
+    }
+  }
+}
+
+function pingHistoryMenuItem () {
+  return {label: 'Ping History', submenu: pingHistory}
+}
+
+function separator () {
+  return {type: 'separator'}
+}
+
+function displayServerMenuItem () {
+  return {label: 'Server: ' + config.server, enabled: false}
+}
+
+function switchServerMenuItem () {
+  return {
+    label: 'Switch to Server on Clipboard',
+    click: function () {
+      config.server = clipboard.readText()
       pingHistory = []
       averageLatency = 'No Returned Pings'
       tray.setImage(questionableConnectionIcon)
       buildMenu()
-    }},
-    {type: 'separator'},
+    }
+  }
+}
 
-    {label: pingingEnabled ? 'Pause' : 'Unpause', click: function () {
+function pauseMenuItem () {
+  return {
+    label: pingingEnabled ? 'Pause' : 'Unpause',
+      click: function () {
       if (pingingEnabled) {
         pingingEnabled = false
         tray.setImage(pausedIcon)
         clearInterval(intervalID)
       } else {
         pingingEnabled = true
-        startPinging()
+        pingEveryInterval()
       }
       buildMenu()
-    }},
-    {label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login', click: function () {
+    }
+  }
+}
+
+function startOnLoginMenuItem () {
+  return {
+    label: (startOnLogin ? 'Disable' : 'Enable') + ' Start on Login',
+    click: function () {
       if (startOnLogin) {
         autostart.disableAutostart('thisApp').then(() => {
           startOnLogin = false
@@ -85,18 +115,37 @@ function buildMenu () {
           console.error(error)
         })
       }
-      startOnLogin = startOnLogin ? false : true
       buildMenu()
-    }},
-    {type: 'separator'},
+    }
+  }
+}
 
-    {label: 'Quit', role: 'quit'}
+function quitMenuItem () {
+  return {label: 'Quit', role: 'quit'}
+}
+
+function buildMenu () {
+  contextMenu = Menu.buildFromTemplate([
+    averageLatencyMenuItem(),
+    copyPingHistoryMenuItem(),
+    pingHistoryMenuItem(),
+    separator(),
+
+    displayServerMenuItem(),
+    switchServerMenuItem(),
+    separator(),
+
+    pauseMenuItem(),
+    startOnLoginMenuItem(),
+    separator(),
+
+    quitMenuItem()
   ])
   tray.setContextMenu(contextMenu)
 }
 
 // Excludes unreturned pings
-function updateAverageLatency () {
+function calculateAverageLatency () {
   let pingSum = 0
   let numReturnedPings = 0
   let numDroppedPings = 0
@@ -108,39 +157,60 @@ function updateAverageLatency () {
       numDroppedPings++
     }
   }
-  averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms'  : 'No Data'
-  droppedPingPercentage = (numDroppedPings / pingHistory.length * 100).toFixed()
+  averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms' : 'No Returned Pings'
+  return averageLatency
+}
 
+function determineStateBasedOnLatency (averageLatency) {
   const averageLatencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
   const tooManyDroppedPings = droppedPingPercentage >= badDropRateThreshold
   const mostRecentPingDropped = pingHistory[pingHistory.length - 1].label === 'Not Returned'
   const mostRecentLatencyIsBad = parseInt(pingHistory[pingHistory.length - 1].label) >= questionableLatencyThreshold
   if (averageLatencyIsGood && !tooManyDroppedPings) {
-    tray.setImage(goodConnectionIcon)
+    return 'good'
   } else if (mostRecentPingDropped || mostRecentLatencyIsBad) {
-    tray.setImage(badConnectionIcon)
+    return 'bad'
   } else {
-    tray.setImage(questionableConnectionIcon)
+    return 'questionable'
   }
 }
 
-function startPinging () {
-  intervalID = setInterval(function () {
-    ping.promise.probe(server, {min_reply: 1}).then(function(pingResponse) {
-
-      const pingLabel = pingResponse.alive ? pingResponse.time.toFixed().toString() : 'Not Returned'
-      pingHistory.push({label: pingLabel})
-      if (pingHistory.length > maxPingsToKeep)
-        pingHistory.splice(0, pingHistory.length - maxPingsToKeep)
-
-      updateAverageLatency()
-
-      buildMenu()
-    })
-  }, pingInterval)
+function setIconBasedOnState (state) {
+  if (state === 'good') {
+    tray.setImage(goodConnectionIcon)
+  } else if (state === 'questionable') {
+    tray.setImage(questionableConnectionIcon)
+  } else {
+    tray.setImage(badConnectionIcon)
+  }
 }
 
-function getAutostartStatus() {
+function updateAverageLatency () {
+  const averageLatency = calculateAverageLatency()
+  const state = determineStateBasedOnLatency(averageLatency)
+  setIconBasedOnState(state)
+}
+
+function pingEveryInterval () {
+  intervalID = setInterval(doThePing, config.pingInterval)
+}
+
+function doThePing () {
+  ping.promise.probe(config.server, {min_reply: 1}).then(function (pingResponse) {
+    putResponseIntoHistory(pingResponse)
+    updateAverageLatency()
+    buildMenu()
+  })
+}
+
+function putResponseIntoHistory (pingResponse) {
+  pingHistory.push({label: pingResponse.time.toFixed().toString()})
+  if (pingHistory.length > config.maxPingsToKeep) {
+    pingHistory.splice(0, pingHistory.length - config.maxPingsToKeep)
+  }
+}
+
+function getAutostartStatus () {
   autostart.isAutostartEnabled('thisApp').then((isEnabled) => {
     startOnLogin = isEnabled
     buildMenu()
