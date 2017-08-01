@@ -16,12 +16,23 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "~1.6.11",
-    "standard": "^10.0.2"
+    "standard": "^10.0.2",
+    "electron-builder": "^19.6.3"
   },
   "dependencies": {
     "eslint": "^4.3.0",
     "eslint-config-standard": "^10.2.1",
     "node-autostart": "^3.0.3",
     "ping": "^0.2.2"
+  },
+  "build": {
+    "appId": "am-i-connected",
+    "mac": {
+      "category": "tool"
+    }
+  },
+  "scripts": {
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   }
 }

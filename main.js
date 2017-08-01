@@ -1,35 +1,37 @@
 const {app, Menu, Tray, clipboard} = require('electron')
 const autostart = require('node-autostart')
-const ping = require('ping')
+const ping  = require('ping')
+const path = require('path')
 
 let clipboardString
 let tray = null
 let contextMenu = null
 let intervalID = null
-let startOnLogin = null
 
-let pingHistory = []
+let startOnLogin = false
 let pingingEnabled = true
 
 let averageLatency = 'No Returned Pings'
+let droppedPingPercentage = 0
 
 const config = {}
 config.pingInterval = 5000
 config.server = 'www.google.com'
 config.maxPingsToKeep = 20
 
-const goodLatencyThreshold = 100
-const questionableLatencyThreshold = 500
+const goodLatencyThreshold = 100 //ms
+const questionableLatencyThreshold = 300 //ms
+const badDropRateThreshold = 11 //percent
 
-const goodLatencyIcon = 'images/running-good@2x.png'
-const questionableLatencyIcon = 'images/running-questionable@2x.png'
-const badLatencyIcon = 'images/running-bad@2x.png'
-const pausedIcon = 'images/paused@2x.png'
+const goodConnectionIcon = path.join(__dirname, 'images/running-good@2x.png')
+const questionableConnectionIcon = path.join(__dirname, 'images/running-questionable@2x.png')
+const badConnectionIcon = path.join(__dirname, 'images/running-bad@2x.png')
+const pausedIcon = path.join(__dirname, 'images/paused@2x.png')
 
 app.dock.hide()
 
 app.on('ready', () => {
-  tray = new Tray(questionableLatencyIcon)
+  tray = new Tray(questionableConnectionIcon)
   tray.setToolTip('am-i-connected')
 
   getAutostartStatus()
@@ -73,7 +75,7 @@ function switchServerMenuItem () {
       config.server = clipboard.readText()
       pingHistory = []
       averageLatency = 'No Returned Pings'
-      tray.setImage(questionableLatencyIcon)
+      tray.setImage(questionableConnectionIcon)
       buildMenu()
     }
   }
@@ -146,10 +148,13 @@ function buildMenu () {
 function calculateAverageLatency () {
   let pingSum = 0
   let numReturnedPings = 0
+  let numDroppedPings = 0
   for (let ping of pingHistory) {
-    if (typeof parseInt(ping.label) === 'number') {
+    if (Number.isInteger(parseInt(ping.label))) {
       pingSum += parseInt(ping.label)
       numReturnedPings++
+    } else {
+      numDroppedPings++
     }
   }
   averageLatency = numReturnedPings > 0 ? (pingSum / numReturnedPings).toFixed() + ' ms' : 'No Returned Pings'
@@ -157,24 +162,26 @@ function calculateAverageLatency () {
 }
 
 function determineStateBasedOnLatency (averageLatency) {
-  const latencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
-  const latencyisQuestionable = parseInt(averageLatency) < questionableLatencyThreshold
-  if (latencyIsGood) {
+  const averageLatencyIsGood = parseInt(averageLatency) < goodLatencyThreshold
+  const tooManyDroppedPings = droppedPingPercentage >= badDropRateThreshold
+  const mostRecentPingDropped = pingHistory[pingHistory.length - 1].label === 'Not Returned'
+  const mostRecentLatencyIsBad = parseInt(pingHistory[pingHistory.length - 1].label) >= questionableLatencyThreshold
+  if (averageLatencyIsGood && !tooManyDroppedPings) {
     return 'good'
-  } else if (latencyisQuestionable) {
-    return 'questionable'
-  } else {
+  } else if (mostRecentPingDropped || mostRecentLatencyIsBad) {
     return 'bad'
+  } else {
+    return 'questionable'
   }
 }
 
 function setIconBasedOnState (state) {
   if (state === 'good') {
-    tray.setImage(goodLatencyIcon)
+    tray.setImage(goodConnectionIcon)
   } else if (state === 'questionable') {
-    tray.setImage(questionableLatencyIcon)
+    tray.setImage(questionableConnectionIcon)
   } else {
-    tray.setImage(badLatencyIcon)
+    tray.setImage(badConnectionIcon)
   }
 }
 
